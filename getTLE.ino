@@ -1,24 +1,28 @@
 void getTLE(int SAT) {
+  client.setCACert(root_ca);
   // Make HTTP request and get TLE for satellite//
-  if (client.connect(server, 80)) {
-#ifdef DEBUG
-    Serial.println("connected to server");
-    //Serial.println("Request #: " + String(SAT) + " For: " + String(satnames[SAT]));
-#endif
-    // Make a HTTP request: //
-    client.println("GET " + startURL + String(satID[SAT]));
-    client.println("Accept: */*");
-    client.println("Host: www.celestrak.com");
+  Serial.println("\nStarting connection to server...");
+  if (!client.connect(server, 443))
+    Serial.println("Connection failed!");
+  else {
+    Serial.println("Connected to server!");
+    // Make a HTTP request:
+    client.println("GET https://" + String(server) + startURL + String(satID[SAT]) + " HTTP/1.0");
+    client.println("Host: " + String(server));
     client.println("Connection: close");
-  }
-  int connectLoop = 0;
-  while (client.connected()) {
+    client.println();
+
+    while (client.connected()) {
+      String line = client.readStringUntil('\n');
+        if (line == "\r") {
+          break;
+        }
+    }
     int j = 0;
     while (client.available()) {
       char c = client.read();
       TLE[j] = c;   //store characters to string
       j++;
-      connectLoop = 0;
       
     }
     k = 0;
@@ -37,12 +41,8 @@ void getTLE(int SAT) {
       k++;
     }
     noTLE = false;
-    connectLoop++;
-    delay(100);
-    if (connectLoop > 100) {
-      client.stop();
-      break;
-    }
-  }
-Serial.println("Collected data #: " + String(SAT) + " For: " + String(satnames[SAT]));
+    client.stop();
+  }  
+  Serial.println("Collected data #: " + String(SAT) + " For: " + String(satnames[SAT]));
 }
+
