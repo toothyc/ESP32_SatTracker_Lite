@@ -9,7 +9,6 @@
 #include <math.h>
 
 
-
 //SGP4
 #include <Sgp4.h>
 
@@ -65,36 +64,76 @@ boolean tracking = false;
 
 //SGP4
 #define NB_SAT 10
-int nbSat = 5;		//Number of satellites to track. (up to ten in Pro version)
-char TLE[500];                																		//Variable to store satellite TLEs.
-char satnames[NB_SAT][30] = {0}; 		                              //Names of satellites. (found here : https://www.celestrak.com/satcat/search.php)
+
+char TLE[500];                                                    //Variable to store satellite TLEs.
+char satnames[NB_SAT][30] = {0};                                  //Names of satellites. (found here : https://www.celestrak.com/satcat/search.php)
+char server[] = "celestrak.org";
 String startURL = "/NORAD/elements/gp.php?CATNR=";
-int satID[NB_SAT] = {25544, 38012, 41457, 38755, 43662}; 					//ID of Celestrak TLEs for satellites. (fixed in lite version)
-//int satID[NB_SAT] = {6073};
-//(https://www.celestrak.com/satcat/tle.php?CATNR=39019)
+
+//Configuration Options start
+int nbSat = 5;    //Number of satellites to track. (up to ten in Pro version)
+int satID[NB_SAT] = {25544, 38012, 41457, 38755, 43662};          //ID of Celestrak TLEs for satellites. (fixed in lite version)
+float myLat = 43.5156, myLong = 1.49806, myAlt = 230 ;    //Antenna latitude, longitude and altitude . (fixed in lite version)
+//wifi
+String ssid = "SSID";                      //can be changed in Pro version
+String password = "PASSWORD";              //can be changed in Pro version
+//Configuration Options end
+
+
+
+const char* root_ca= \
+  "-----BEGIN CERTIFICATE-----\n" \
+  "MIIF3jCCA8agAwIBAgIQAf1tMPyjylGoG7xkDjUDLTANBgkqhkiG9w0BAQwFADCB\n" \
+  "iDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCk5ldyBKZXJzZXkxFDASBgNVBAcTC0pl\n" \
+  "cnNleSBDaXR5MR4wHAYDVQQKExVUaGUgVVNFUlRSVVNUIE5ldHdvcmsxLjAsBgNV\n" \
+  "BAMTJVVTRVJUcnVzdCBSU0EgQ2VydGlmaWNhdGlvbiBBdXRob3JpdHkwHhcNMTAw\n" \
+  "MjAxMDAwMDAwWhcNMzgwMTE4MjM1OTU5WjCBiDELMAkGA1UEBhMCVVMxEzARBgNV\n" \
+  "BAgTCk5ldyBKZXJzZXkxFDASBgNVBAcTC0plcnNleSBDaXR5MR4wHAYDVQQKExVU\n" \
+  "aGUgVVNFUlRSVVNUIE5ldHdvcmsxLjAsBgNVBAMTJVVTRVJUcnVzdCBSU0EgQ2Vy\n" \
+  "dGlmaWNhdGlvbiBBdXRob3JpdHkwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIK\n" \
+  "AoICAQCAEmUXNg7D2wiz0KxXDXbtzSfTTK1Qg2HiqiBNCS1kCdzOiZ/MPans9s/B\n" \
+  "3PHTsdZ7NygRK0faOca8Ohm0X6a9fZ2jY0K2dvKpOyuR+OJv0OwWIJAJPuLodMkY\n" \
+  "tJHUYmTbf6MG8YgYapAiPLz+E/CHFHv25B+O1ORRxhFnRghRy4YUVD+8M/5+bJz/\n" \
+  "Fp0YvVGONaanZshyZ9shZrHUm3gDwFA66Mzw3LyeTP6vBZY1H1dat//O+T23LLb2\n" \
+  "VN3I5xI6Ta5MirdcmrS3ID3KfyI0rn47aGYBROcBTkZTmzNg95S+UzeQc0PzMsNT\n" \
+  "79uq/nROacdrjGCT3sTHDN/hMq7MkztReJVni+49Vv4M0GkPGw/zJSZrM233bkf6\n" \
+  "c0Plfg6lZrEpfDKEY1WJxA3Bk1QwGROs0303p+tdOmw1XNtB1xLaqUkL39iAigmT\n" \
+  "Yo61Zs8liM2EuLE/pDkP2QKe6xJMlXzzawWpXhaDzLhn4ugTncxbgtNMs+1b/97l\n" \
+  "c6wjOy0AvzVVdAlJ2ElYGn+SNuZRkg7zJn0cTRe8yexDJtC/QV9AqURE9JnnV4ee\n" \
+  "UB9XVKg+/XRjL7FQZQnmWEIuQxpMtPAlR1n6BB6T1CZGSlCBst6+eLf8ZxXhyVeE\n" \
+  "Hg9j1uliutZfVS7qXMYoCAQlObgOK6nyTJccBz8NUvXt7y+CDwIDAQABo0IwQDAd\n" \
+  "BgNVHQ4EFgQUU3m/WqorSs9UgOHYm8Cd8rIDZsswDgYDVR0PAQH/BAQDAgEGMA8G\n" \
+  "A1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQEMBQADggIBAFzUfA3P9wF9QZllDHPF\n" \
+  "Up/L+M+ZBn8b2kMVn54CVVeWFPFSPCeHlCjtHzoBN6J2/FNQwISbxmtOuowhT6KO\n" \
+  "VWKR82kV2LyI48SqC/3vqOlLVSoGIG1VeCkZ7l8wXEskEVX/JJpuXior7gtNn3/3\n" \
+  "ATiUFJVDBwn7YKnuHKsSjKCaXqeYalltiz8I+8jRRa8YFWSQEg9zKC7F4iRO/Fjs\n" \
+  "8PRF/iKz6y+O0tlFYQXBl2+odnKPi4w2r78NBc5xjeambx9spnFixdjQg3IM8WcR\n" \
+  "iQycE0xyNN+81XHfqnHd4blsjDwSXWXavVcStkNr/+XeTWYRUc+ZruwXtuhxkYze\n" \
+  "Sf7dNXGiFSeUHM9h4ya7b6NnJSFd5t0dCy5oGzuCr+yDZ4XUmFF0sbmZgIn/f3gZ\n" \
+  "XHlKYC6SQK5MNyosycdiyA5d9zZbyuAlJQG03RoHnHcAP9Dc1ew91Pq7P8yF1m9/\n" \
+  "qS3fuQL39ZeatTXaw2ewh0qpKJ4jjv9cJ2vhsE/zB+4ALtRZh8tSQZXq9EfX7mRB\n" \
+  "VXyNWQKV3WKdwrnuWih0hKWbt5DHDAff9Yk2dDLWKMGwsAvgnEzDHNb842m1R0aB\n" \
+  "L6KCq9NjRHDEjf8tM7qtj3u1cIiuPhnPQCjY/MiQu12ZIvVS5ljFH4gxQ+6IHdfG\n" \
+  "jjxDah2nGN59PRbxYvnKkKj9\n" \
+  "-----END CERTIFICATE-----\n";
+
 
 char TLE1[NB_SAT][70]; char TLE2[NB_SAT][70];
 
-float myLat = 43.5156, myLong = 1.49806, myAlt = 230 ;   	//Antenna latitude, longitude and altitude . (fixed in lite version
-
-int delayNext =  0 ;                  										//used to delay acquisition (in s) Pro version
-int timeSpeed = 5;															//used to speed up the time during tracking  Pro version
+int delayNext =  0 ;                                      //used to delay acquisition (in s) Pro version
+int timeSpeed = 5;                              //used to speed up the time during tracking  Pro version
 boolean firstTimeSpeed = true;
-boolean noTLE = true;														//boot with no TLE and try to get them either via Wifi (celestrack) or from smartphone (BLE) Pro version
+boolean noTLE = true;                           //boot with no TLE and try to get them either via Wifi (celestrack) or from smartphone (BLE) Pro version
 long TLEtimeOut;
 int prevCalStatus;
 int TLEday, nowDay;
-WiFiClient client;  //used to get TLE
+WiFiClientSecure client;  //used to get TLE
+
+
 
 Sgp4 sat;
-
-//wifi
-String ssid = "WIFI_NAME_HERE";                      //can be changed in Pro version
-String password = "WIFI_PASSWORD_HERE";              //can be changed in Pro version
-
-
 //time
-boolean noTime = true;	//boot with no time and try to get it via wifi (NTP) or from smartphone (BLE)
+boolean noTime = true;  //boot with no time and try to get it via wifi (NTP) or from smartphone (BLE)
 
 int TimeZone = 1;
 const int dst = 1;
@@ -106,7 +145,6 @@ long lastWake;
 int i; int k; int SAT; int nextSat; int AZstart; long passEnd; int satVIS;
 char satname[] = " ";
 int passStatus = 0;
-char server[] = "104.168.149.178";    //Web address to get TLE (CELESTRAK) : //(https://www.celestrak.com/satcat/tle.php?CATNR=39019)
 int  years; int months; int days; int hours; int minutes; double seconds; int today;
 long nextpassEpoch; long upcomingPasses[4];
 
@@ -183,7 +221,7 @@ void setup()
   //SGP4
   sat.site(myLat, myLong, myAlt); //set location latitude[°], longitude[°] and altitude[m]
 
-  if (!noTime)		//don't try to fetch TLE if time is not set
+  if (!noTime)    //don't try to fetch TLE if time is not set
   {
 
     time_t now;
@@ -456,7 +494,7 @@ void loop()
           prepass();
           break;
         }
-        if ((sat.satVis != -2) && (passStatus == 1))	//satellite visible and tracking
+        if ((sat.satVis != -2) && (passStatus == 1))  //satellite visible and tracking
         {
           tracking = true;
           inPass();
@@ -477,7 +515,7 @@ void loop()
           endpass();
           break;
         }
-        if (sat.satVis == -2)		//stand by 1 min after pass and sat not visible
+        if (sat.satVis == -2)   //stand by 1 min after pass and sat not visible
         {
           tracking = false;
           standby();
@@ -649,3 +687,4 @@ void updateSatellites()
   sat.init(satname, TLE1[nextSat], TLE2[nextSat]);
   Predict(1);
 }
+
